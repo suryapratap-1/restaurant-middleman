@@ -3,8 +3,10 @@ import mongoose from "mongoose";
 const inventorySchema = new mongoose.Schema(
     {
         restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant", required: true },
+        category: { type: String, required: true },
         items: [
             {
+                // itemId: { type: mongoose.Schema.Types.ObjectId, ref: "Item", required: true },
                 name: { type: String, required: true },
                 stock: { type: Number, required: true },
                 outOfStock: { type: Boolean, default: false },

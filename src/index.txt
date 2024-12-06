@@ -1,0 +1,22 @@
+
+
+// Store
+
+city
+name
+address
+zip_codes
+geo_longitude
+geo_latitude
+min_pickup_time (in seconds)
+min_delivery_time (in seconds)
+contact_phone
+ref_id
+min_order_value
+hide_from_ui
+notification_emails
+active
+ordering_enabled
+notification_phones (array of contacts)
+notification_emails (array of emails)
+excluded_platforms (array of platforms)

@@ -3,8 +3,14 @@ import mongoose from "mongoose";
 const paymentSchema = new mongoose.Schema(
     {
         restaurantId: { type: mongoose.Schema.Types.ObjectId, ref: "Restaurant", required: true },
-        platform: { type: String, enum: ["Zomato", "Swiggy"], required: true },
-        orderId: { type: String, required: true },
+        order_id: { type: mongoose.Schema.Types.ObjectId, ref: "Order", required: true },
+        user_details: {
+            name: { type: String, required: true },
+            email: { type: String, required: true },
+            phone: { type: String, required: true },
+        },
+        delivery_partner: { type: String, enum: ["Zomato", "Swiggy"], required: true },
+        payment_gateway: { type: String },
         paymentDetails: {
             totalAmount: { type: Number, required: true },
             platformFee: { type: Number, required: true },
