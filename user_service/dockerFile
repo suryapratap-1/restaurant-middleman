@@ -1,0 +1,26 @@
+# Use an official Node runtime as the base image
+FROM node:18-alpine
+
+# Set working directory
+WORKDIR /app
+
+# Copy package files
+COPY package*.json ./
+
+# Install global dependencies
+RUN npm install -g typescript ts-node nodemon
+
+# Install project dependencies
+RUN npm ci
+
+# Copy the rest of the application code
+COPY . .
+
+# Compile TypeScript
+RUN npm run build
+
+# Expose the port the app runs on
+EXPOSE 8001
+
+# Command to run the application
+CMD ["node", "dist/index.js"]
