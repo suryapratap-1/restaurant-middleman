@@ -1,123 +1,54 @@
+import mongoose from "mongoose";
 import argon2 from "argon2";
-import User from "../models/user.model";
-import Store from "../models/store.model";
+import User, { IUser } from "../models/user.model";
 import jwt from "jsonwebtoken";
 import { config } from "../config/variables.config";
+import { createAdminOrSuperAdmin, createManagerOrStaff } from "../service/user.services";
+import { verifyPassword } from "../utils/argon2.utils";
+
 
 export const registerUser = async (req: any, res: any) => {
-    const {
-        firstName,
-        lastName,
-        email,
-        password,
-        phone,
-        profile_picture = null, // Default to null if not provided
-        role,
-        storeDetails, // Only for managers
-    } = req.body;
+    const { role } = req.body;
+    if (!role) return res.status(400).json({ success: false, message: "Role is required to register." })
 
     try {
-        // Step 1: Check if email already exists
-        const existingUser = await User.findOne({ email });
-        if (existingUser) {
-            return res.status(400).json({ message: "Email already exists." });
-        }
+        let user: any;
 
-        // Step 2: Ensure the role is provided
-        if (!role) {
-            return res.status(400).json({ message: "Role is required." });
-        }
+        if (['admin', 'super_admin'].includes(role)) {
+            // User type 1: Admin or Super Admin
+            user = await createAdminOrSuperAdmin(req.body);
 
-        // Step 3: Ensure all required fields are provided
-        if (!firstName || !lastName || !email || !password || !phone) {
-            return res.status(400).json({ message: "All fields are required." });
-        }
+            const userObject = user.toObject();
+            delete userObject.password;
 
-        // Step 4: Hash the password
-        const hashedPassword = await argon2.hash(password);
-
-        // Step 5: Role-based registration process
-        if (role === "manager") {
-            // Validate storeDetails
-            if (
-                !storeDetails ||
-                !storeDetails.storeName ||
-                !storeDetails.openTime ||
-                !storeDetails.closeTime ||
-                !storeDetails.partnerWith ||
-                !storeDetails.notificationPhone
-            ) {
-                return res.status(400).json({
-                    message: "All store fields are required for the manager role.",
-                });
-            }
-
-            // Create the user and store in a transaction
-            const user = new User({
-                firstName,
-                lastName,
-                email,
-                password: hashedPassword,
-                phone,
-                profile_picture,
-                role,
+            return res.status(201).json({
+                success: true,
+                message: `${role} registered successfully.`,
+                userObject
             });
-
-            const store = new Store({
-                storeName: storeDetails.storeName,
-                userDetails: user._id,
-                address: storeDetails.address,
-                notificationPhone: storeDetails.notificationPhone,
-                openTime: storeDetails.openTime,
-                closeTime: storeDetails.closeTime,
-                holidayList: storeDetails.holidayList || [],
-                partnerWith: storeDetails.partnerWith,
-                partnerReferenceId: storeDetails.partnerReferenceId,
-                deliveryRange: storeDetails.deliveryRange || 0,
-                storeStatus: storeDetails.storeStatus || "active",
-                translation: storeDetails.translation || [],
-            });
-
-            const session = await User.startSession();
-            session.startTransaction();
-            try {
-                user.restaurant_id = store._id;
-                await user.save({ session });
-                store.userDetails = user._id;
-                await store.save({ session });
-                await session.commitTransaction();
-                session.endSession();
-                return res.status(201).json({ message: "Manager and store registered successfully." });
-            } catch (err) {
-                await session.abortTransaction();
-                session.endSession();
-                throw err;
-            }
-        } 
-        else if (["super_admin", "admin"].includes(role)) {
-            // Create the user without store details
-            const user = new User({
-                firstName,
-                lastName,
-                email,
-                password: hashedPassword,
-                phone,
-                profile_picture,
-                role,
-            });
-
-            await user.save();
-            return res.status(201).json({ message: "User registered successfully." });
-        } 
-        else {
-            return res.status(400).json({ message: "Invalid role provided." });
         }
-    } 
-    catch (err) {
-        console.error(err);
-        return res.status(500).json({ message: "Internal server error." });
+
+        if (['manager', 'staff'].includes(role)) {
+            // User type 2: Manager or Staff
+            user = await createManagerOrStaff(req.body);
+            return res.status(201).json({
+                success: true,
+                message: `${role} and store registered successfully.`,
+                user
+            });
+        }
+
+        return res.status(400).json({ success: false, message: 'Invalid role provided.' });
+
+    } catch (error: any) {
+        console.error("Error registering user:", error);
+        return res.status(500).json({
+            success: false,
+            message: "Error registering user.",
+            error: error.message
+        });
     }
-};
+}
 
 export const loginUser = async (req: any, res: any) => {
     try {
@@ -135,7 +66,8 @@ export const loginUser = async (req: any, res: any) => {
         }
 
         // 3. Validate password
-        const isPasswordValid = await argon2.verify(user.password, password);
+        // const isPasswordValid = await argon2.verify(user.password, password);
+        const isPasswordValid = await verifyPassword(user.password, password);
         if (!isPasswordValid) {
             return res.status(401).json({ message: "Invalid password." });
         }
@@ -190,5 +122,53 @@ export const logoutUser = async (req: any, res: any) => {
     } catch (error) {
         console.error("Logout Error:", error);
         return res.status(500).json({ message: "Internal server error." });
+    }
+};
+
+// Update User Controller
+export const updateUser = async (req: any, res: any) => {
+    try {
+        const userId: string = req.params.id;
+        const { firstName, lastName, email, password, phone, profilePicture, isActive }: Partial<IUser> = req.body;
+
+        if (!mongoose.Types.ObjectId.isValid(userId)) {
+            return res.status(400).json({ message: "Invalid user ID" });
+        }
+
+        // Validate fields
+        const updateData: Partial<IUser> = {};
+        if (firstName) updateData.firstName = firstName;
+        if (lastName) updateData.lastName = lastName;
+        if (email) updateData.email = email;
+        if (password) updateData.password = await argon2.hash(password);
+        if (phone) updateData.phone = phone;
+        if (profilePicture) updateData.profilePicture = profilePicture;
+        if (typeof isActive !== "undefined") updateData.isActive = isActive;
+
+        // Ensure role and restaurant_id are not updated
+        delete updateData.role;
+        delete updateData.restaurantId;
+
+        // Find and update user
+        const updatedUser: any = await User.findByIdAndUpdate(
+            userId,
+            { $set: updateData },
+            { new: true, runValidators: true } // Return updated document and validate data
+        );
+
+        if (!updatedUser) {
+            return res.status(404).json({ message: "User not found" });
+        }
+
+        const userObject = updatedUser.toObject();
+        delete userObject.password;
+
+        return res.status(200).json({
+            message: "User updated successfully",
+            data: userObject,
+        });
+    } catch (error) {
+        console.error("Error updating user:", error);
+        return res.status(500).json({ message: "Internal Server Error" });
     }
 };
