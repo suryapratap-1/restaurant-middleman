@@ -1,6 +1,28 @@
-import mongoose, { Schema } from "mongoose";
+import mongoose, { Document, Model, Schema } from "mongoose";
 
-const storeSchema = new Schema(
+interface IStore {
+    storeRegistredId?: string;
+    storeName: string;
+    userDetails: mongoose.Types.ObjectId;
+    address?: mongoose.Types.ObjectId;
+    notificationPhone: string;
+    openTime: string;
+    closeTime: string;
+    holidayList?: Date[];
+    partnerWith: string;
+    partnerReferenceId?: mongoose.Types.ObjectId;
+    deliveryRange?: number;
+    storeStatus?: "active" | "busy";
+    translation?: string[];
+    createdAt?: Date;
+    updatedAt?: Date;
+}
+
+export interface IStoreDocument extends IStore, Document { }
+
+interface IStoreModel extends Model<IStoreDocument> { }
+
+const storeSchema = new Schema<IStoreDocument>(
     {
         storeRegistredId: { type: String },
         storeName: {
@@ -27,15 +49,16 @@ const storeSchema = new Schema(
             ref: "DeliveryPartner",
         },
         deliveryRange: { type: Number, default: 0 },
-        storeStatus: { 
-            type: String, 
+        storeStatus: {
+            type: String,
             enum: ["active", "busy"],
-            default: "active"
+            default: "active",
         },
         translation: { type: [String], default: [] },
     },
     { timestamps: true }
 );
 
-const Store = mongoose.model("Store", storeSchema);
+const Store = mongoose.model<IStoreDocument, IStoreModel>("Store", storeSchema);
+
 export default Store;
