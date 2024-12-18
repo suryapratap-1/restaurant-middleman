@@ -9,7 +9,8 @@ connectDB()
             console.log(`Server is running on port ${config.port}`);
         })
 
-        app.use("/auth", authRouter)
+        app.use("/", authRouter)
+
     })
     .catch((error) => {
         console.error("Error connecting to database:", error);
