@@ -1,7 +1,9 @@
 import { Types } from 'mongoose';
 import User from '../models/user.model';
-import Store, { IStoreDocument} from '../models/store.model';
+import Store, { IStoreDocument } from '../models/store.model';
 import Address from '../models/address.model';
+import storeRegisteredIdSchema from '../models/storeRegistered.model';
+import { generateUniqueId, generateApiKey, generateApiSecret } from '../utils/uniqueHelpers';
 import { hashPassword } from '../utils/argon2.utils';
 import { validateAddressData, validateStoreData, validateUserData } from '../utils/validator';
 
@@ -26,6 +28,7 @@ interface IStore {
     role: 'super_admin' | 'admin' | 'manager' | 'staff';
     storeDetails: {
         storeName: string;
+        posId: string;
         notificationPhone: string;
         openTime: string;
         closeTime: string;
@@ -49,7 +52,7 @@ interface IStore {
 
 export const createAdminOrSuperAdmin = async (userData: IUser): Promise<IUser> => {
     const { firstName, lastName, email, password, phone, profilePicture, role } = userData;
-    
+
     validateUserData({ firstName, lastName, email, password, phone, role });
 
     const hashedPassword = await hashPassword(password);
@@ -78,6 +81,13 @@ export const createManagerOrStaff = async (storeData: IStore): Promise<IStoreDoc
 
     const hashedPassword = await hashPassword(password);
 
+    // Generate unique storeRegistredId
+    const storeRegistredId = generateUniqueId();
+
+    // Generate API Key and API Secret
+    const apiKey = generateApiKey();
+    const apiSecret = generateApiSecret();
+
     // Create the Address
     const address = new Address(addressDetails);
     await address.save();
@@ -85,6 +95,8 @@ export const createManagerOrStaff = async (storeData: IStore): Promise<IStoreDoc
     // Create the Store
     const store = new Store({
         storeName: storeDetails.storeName,
+        storeRegistredId: null,
+        posId: storeDetails.posId,
         userDetails: null,
         address: address._id,
         notificationPhone: storeDetails.notificationPhone,
@@ -110,7 +122,16 @@ export const createManagerOrStaff = async (storeData: IStore): Promise<IStoreDoc
         restaurantId: store._id
     });
 
+    // Save the generated values into the StoreRegisteredId collection
+    const storeRegIdRecord = new storeRegisteredIdSchema({
+        storeRegistredId,
+        apiKey,
+        apiSecret,
+    });
+    await storeRegIdRecord.save();
+
     store.userDetails = user._id as Types.ObjectId;
+    store.storeRegistredId = storeRegIdRecord.storeRegistredId as string;
     await store.save();
     await user.save();
 
