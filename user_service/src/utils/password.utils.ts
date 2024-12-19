@@ -11,9 +11,8 @@ const hashPassword = async (password: string) => {
 
 const verifyPassword = async (storedPassword: string, password: string): Promise<void> => {
     const isMatch = await argon2.verify(storedPassword, password);
-
+    
     if (!isMatch) throw new Error('Invalid password');
-    else throw new Error('Password verification failed');
 };
 
 export { hashPassword, verifyPassword };
