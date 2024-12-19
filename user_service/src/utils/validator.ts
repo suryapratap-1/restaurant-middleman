@@ -89,6 +89,7 @@ export const validateAddressData = (addressData: any): void => {
 export const validateStoreData = (storeData: any): void => {
     const {
         storeName,
+        posId,
         notificationPhone,
         openTime,
         closeTime,
@@ -101,6 +102,10 @@ export const validateStoreData = (storeData: any): void => {
     // Validate store name
     if (!storeName || storeName.trim().length === 0 || storeName.length > 50) {
         throw new Error("Store name is required and must not exceed 50 characters.");
+    }
+
+    if (!posId || posId.trim().length === 0) {
+        throw new Error("POS ID is required.");
     }
 
     // Validate notification phone
