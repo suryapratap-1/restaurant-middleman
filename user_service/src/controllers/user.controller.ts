@@ -4,6 +4,7 @@ import User, { IUser } from "../models/user.model";
 import Store, { IStore } from "../models/store.model";
 import { createAdminOrSuperAdmin, createManagerOrStaff } from "../service/user.services";
 import { verifyPassword, generateToken, validateApiKeyAndSecret, validateApiCredentialFields, validateLoginFields, validateMongoObjectId, createStoreUpdatePayload } from "../utils";
+import { createAdminUpdatePayload } from "../utils/createPayload";
 
 export const registerUser = async (req: any, res: any) => {
     const { role } = req.body;
@@ -118,24 +119,14 @@ export const logoutUser = async (req: any, res: any) => {
 };
 
 // Update Super admin or admin Controller
-export const updateUser = async (req: any, res: any) => {
+export const updateAdminOrSuperAdmin = async (req: any, res: any) => {
     try {
         const userId: string = req.params.id;
-        const { firstName, lastName, email, password, phone, profilePicture, isActive }: Partial<IUser> = req.body;
+        const payload: Partial<IUser> = req.body;
 
-        if (!mongoose.Types.ObjectId.isValid(userId)) {
-            return res.status(400).json({ message: "Invalid user ID" });
-        }
+        validateMongoObjectId(userId, "User");
 
-        // Validate fields
-        const updateData: Partial<IUser> = {};
-        if (firstName) updateData.firstName = firstName;
-        if (lastName) updateData.lastName = lastName;
-        if (email) updateData.email = email;
-        if (password) updateData.password = await argon2.hash(password);
-        if (phone) updateData.phone = phone;
-        if (profilePicture) updateData.profilePicture = profilePicture;
-        if (typeof isActive !== "undefined") updateData.isActive = isActive;
+        const updateData = createAdminUpdatePayload(payload);
 
         // Ensure role and restaurant_id are not updated
         delete updateData.role;
@@ -145,12 +136,10 @@ export const updateUser = async (req: any, res: any) => {
         const updatedUser: any = await User.findByIdAndUpdate(
             userId,
             { $set: updateData },
-            { new: true, runValidators: true } // Return updated document and validate data
+            { new: true, runValidators: true }
         );
 
-        if (!updatedUser) {
-            return res.status(404).json({ message: "User not found" });
-        }
+        if (!updatedUser) throw new Error("User not found");
 
         const userObject = updatedUser.toObject();
         delete userObject.password;
@@ -159,9 +148,20 @@ export const updateUser = async (req: any, res: any) => {
             message: "User updated successfully",
             data: userObject,
         });
-    } catch (error) {
+    } catch (error: any) {
         console.error("Error updating user:", error);
-        return res.status(500).json({ message: "Internal Server Error" });
+
+        if (error.message.includes("required")) {
+            return res.status(400).json({ message: error.message });
+        }
+        if (error.message === "Invalid User ID") {
+            return res.status(404).json({ message: "Invalid user ID" })
+        }
+        if (error.message === "User not found") {
+            return res.status(404).json({ message: "User not found." });
+        }
+
+        return res.status(500).json({ message: "Unable to update user details.", error: error.message })
     }
 };
 
@@ -206,9 +206,9 @@ export const generateStoreToken = async (req: any, res: any) => {
 export const updateStore = async (req: any, res: any) => {
     try {
         const storeId: string = req.params.id;
-        const inputData: Partial<IStore> = req.body; 
+        const inputData: Partial<IStore> = req.body;
 
-        validateMongoObjectId(storeId);
+        validateMongoObjectId(storeId, "Store");
 
         const updateData = createStoreUpdatePayload(inputData);
         delete updateData.storeRegistredId;
