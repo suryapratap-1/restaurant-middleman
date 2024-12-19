@@ -1,12 +1,12 @@
 import mongoose from "mongoose";
 
-export const validateMongoObjectId = (id: any): void => {
+export const validateMongoObjectId = (id: any, user: string): void => {
     if (!id) {
-        throw new Error("Store ID is required.");
+        throw new Error(`${user} ID is required.`);
     }
 
     if (!mongoose.Types.ObjectId.isValid(id)) {
-        throw new Error("Invalid store ID");
+        throw new Error(`Invalid ${user} ID`);
     }
 }
 
