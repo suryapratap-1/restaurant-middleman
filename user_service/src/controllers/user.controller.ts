@@ -4,7 +4,9 @@ import User, { IUser } from "../models/user.model";
 import jwt from "jsonwebtoken";
 import { config } from "../config/variables.config";
 import { createAdminOrSuperAdmin, createManagerOrStaff } from "../service/user.services";
-import { verifyPassword } from "../utils/argon2.utils";
+import { verifyPassword } from "../utils/password.utils";
+import { generateToken, validateApiKeyAndSecret } from "../utils/auth.utils";
+import { validateApiCredentialFields, validateLoginFields } from "../utils/validator";
 
 
 export const registerUser = async (req: any, res: any) => {
@@ -54,37 +56,18 @@ export const loginUser = async (req: any, res: any) => {
     try {
         const { email, password } = req.body;
 
-        // 1. Validate if email or password is missing
-        if (!email || !password) {
-            return res.status(400).json({ message: "Email and password are required." });
-        }
+        validateLoginFields(email, password);
 
-        // 2. Find user by email
         const user = await User.findOne({ email });
         if (!user) {
             return res.status(404).json({ message: "User not found." });
         }
 
-        // 3. Validate password
-        // const isPasswordValid = await argon2.verify(user.password, password);
-        const isPasswordValid = await verifyPassword(user.password, password);
-        if (!isPasswordValid) {
-            return res.status(401).json({ message: "Invalid password." });
-        }
+        await verifyPassword(user.password, password);
 
-        // 4. Generate JWT Token
-        const tokenPayload = {
-            id: user._id,
-            role: user.role,
-        };
+        const tokenPayload = { id: user._id, role: user.role, };
+        const token = generateToken(tokenPayload);
 
-        const token = jwt.sign(
-            tokenPayload,
-            config.jwtSecret as string,
-            { expiresIn: config.jwtExpiration as string }
-        );
-
-        // 5. Set token as a cookie
         res.cookie("accesstoken", token, {
             httpOnly: true, // Prevent client-side JavaScript access
             secure: process.env.NODE_ENV === "production", // Use secure cookies in production
@@ -92,7 +75,6 @@ export const loginUser = async (req: any, res: any) => {
             maxAge: 3600000, // Cookie expiration time (1 hour)
         });
 
-        // 6. Respond with success message and user info
         return res.status(200).json({
             message: "Login successful.",
             user: {
@@ -102,9 +84,23 @@ export const loginUser = async (req: any, res: any) => {
             },
         });
     }
-    catch (error) {
-        console.error("Error logging in user:", error);
-        return res.status(500).json({ message: "Internal server error." });
+    catch (error: any) {
+        console.error("Error logging in user:", error.message);
+
+        if (error.message === "Email is required.") {
+            return res.status(400).json({ message: "Email is required." });
+        }
+        if (error.message === "Password is required.") {
+            return res.status(400).json({ message: "Password is required." });
+        }
+        if (error.message === "Invalid password") {
+            return res.status(401).json({ message: "Invalid password." });
+        }
+
+        return res.status(500).json({
+            message: "Login failed, try again later.",
+            error: error.message
+        });
     }
 }
 
@@ -125,7 +121,7 @@ export const logoutUser = async (req: any, res: any) => {
     }
 };
 
-// Update User Controller
+// Update Super admin or admin Controller
 export const updateUser = async (req: any, res: any) => {
     try {
         const userId: string = req.params.id;
@@ -172,3 +168,41 @@ export const updateUser = async (req: any, res: any) => {
         return res.status(500).json({ message: "Internal Server Error" });
     }
 };
+
+export const generateStoreToken = async (req: any, res: any) => {
+    try {
+        const { apiKey, apiSecret } = req.body;
+
+        validateApiCredentialFields(apiKey, apiSecret);
+
+        const store = await validateApiKeyAndSecret(apiKey, apiSecret);
+
+        const storeAuthToken = generateToken({ storeRegistredId: store.storeRegistredId });
+
+        return res.status(200).json({
+            message: "Store token generated successfully.",
+            token: storeAuthToken
+        })
+
+    }
+    catch (error: any) {
+        console.error("Error generating store token:", error.message);
+
+        if (error.message === 'Invalid API key or secret') {
+            return res.status(401).json({
+                message: "Invalid API credentials.",
+            });
+        }
+
+        if (error.message.includes('required')) {
+            return res.status(400).json({
+                message: error.message,
+            });
+        }
+
+        return res.status(500).json({
+            message: "Error generating store auth token.",
+            error: error.message,
+        });
+    }
+}
