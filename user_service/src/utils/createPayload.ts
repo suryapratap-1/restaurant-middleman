@@ -11,4 +11,17 @@ export const createStoreUpdatePayload = (inputData: any): Partial<IStore> => {
     }
 
     return filteredData;
+
+}
+export const createAdminUpdatePayload = (inputData: any): Partial<any> => {
+
+    const filteredData: any = {};
+
+    for (const key in inputData) {
+        if (inputData[key] !== undefined && inputData[key] !== null) {
+            filteredData[key] = inputData[key];
+        }
+    }
+
+    return filteredData;
 }
