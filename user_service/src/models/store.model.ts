@@ -1,6 +1,6 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
-interface IStore {
+export interface IStore {
     storeRegistredId: string;
     posId: string;
     storeName: string;
