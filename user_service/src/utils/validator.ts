@@ -44,7 +44,6 @@ export const validateUserData = (userData: any): void => {
     }
 };
 
-
 export const validateAddressData = (addressData: any): void => {
     const {
         location,
@@ -145,3 +144,21 @@ export const validateStoreData = (storeData: any): void => {
         throw new Error(`Store status must be one of: ${validStatuses.join(", ")}`);
     }
 };
+
+export const validateApiCredentialFields = (apiKey: string, apiSecret: string): void => {
+    if (!apiKey || apiKey.trim().length === 0) {
+        throw new Error("API Key is required.");
+    }
+    if (!apiSecret || apiSecret.trim().length === 0) {
+        throw new Error("API Secret is required.");
+    }
+}
+
+export const validateLoginFields = (email: string, password: string): void => {
+    if (!email || email.trim().length === 0) {
+        throw new Error("Email is required.");
+    }
+    if (!password || password.trim().length === 0) {
+        throw new Error("Password is required.");
+    }
+}
