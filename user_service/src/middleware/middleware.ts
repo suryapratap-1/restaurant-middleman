@@ -1,5 +1,6 @@
 import jwt from "jsonwebtoken";
 import { config } from "../config/variables.config";
+import { verifyToken } from "../utils/auth.utils";
 
 export const authenticateToken = (req: any, res: any, next: any) => {
     const token = req.headers.authorization.split(" ")[1];
@@ -12,6 +13,20 @@ export const authenticateToken = (req: any, res: any, next: any) => {
         req.user = decoded; // Pass decoded user data to the next middleware
         next();
     } catch (error) {
+        return res.status(403).json({ message: "Invalid token." });
+    }
+};
+
+export const authorizeStore = (req: any, res: any, next: any) => {
+
+    const token = req.headers.authorization.split(" ")[1];
+    if (!token) return res.status(401).json({ message: "No token provided." });
+
+    try {
+        const isValid = verifyToken(token);
+        if (isValid) next();
+    } 
+    catch (error) {
         return res.status(403).json({ message: "Invalid token." });
     }
 };
