@@ -4,7 +4,7 @@ import Store, { IStoreDocument } from '../models/store.model';
 import Address from '../models/address.model';
 import storeRegisteredIdSchema from '../models/storeRegistered.model';
 import { generateUniqueId, generateApiKey, generateApiSecret } from '../utils/uniqueHelpers';
-import { hashPassword } from '../utils/argon2.utils';
+import { hashPassword } from '../utils/password.utils';
 import { validateAddressData, validateStoreData, validateUserData } from '../utils/validator';
 
 interface IUser {
