@@ -126,7 +126,7 @@ export const updateAdminOrSuperAdmin = async (req: any, res: any) => {
 
         validateMongoObjectId(userId, "User");
 
-        const updateData = createAdminUpdatePayload(payload);
+        const updateData = await createAdminUpdatePayload(payload);
 
         // Ensure role and restaurant_id are not updated
         delete updateData.role;
