@@ -1,18 +1,20 @@
 import mongoose, { Document, Model, Schema } from "mongoose";
 
 interface IStore {
-    storeRegistredId?: string;
+    storeRegistredId: string;
+    posId: string;
     storeName: string;
     userDetails: mongoose.Types.ObjectId;
-    address?: mongoose.Types.ObjectId;
+    address: mongoose.Types.ObjectId;
+    paymentDetails: mongoose.Types.ObjectId,
     notificationPhone: string;
     openTime: string;
     closeTime: string;
-    holidayList?: Date[];
+    holidayList: Date[];
     partnerWith: string;
-    partnerReferenceId?: mongoose.Types.ObjectId;
-    deliveryRange?: number;
-    storeStatus?: "active" | "busy";
+    partnerReferenceId: mongoose.Types.ObjectId;
+    deliveryRange: number;
+    storeStatus: "active" | "busy";
     translation?: string[];
     createdAt?: Date;
     updatedAt?: Date;
@@ -25,6 +27,7 @@ interface IStoreModel extends Model<IStoreDocument> { }
 const storeSchema = new Schema<IStoreDocument>(
     {
         storeRegistredId: { type: String },
+        posId: { type: String, required: true },
         storeName: {
             type: String,
             maxlength: 50,
