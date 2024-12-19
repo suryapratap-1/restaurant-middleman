@@ -1,13 +1,9 @@
 import mongoose from "mongoose";
 import argon2 from "argon2";
 import User, { IUser } from "../models/user.model";
-import jwt from "jsonwebtoken";
-import { config } from "../config/variables.config";
+import Store, { IStore } from "../models/store.model";
 import { createAdminOrSuperAdmin, createManagerOrStaff } from "../service/user.services";
-import { verifyPassword } from "../utils/password.utils";
-import { generateToken, validateApiKeyAndSecret } from "../utils/auth.utils";
-import { validateApiCredentialFields, validateLoginFields } from "../utils/validator";
-
+import { verifyPassword, generateToken, validateApiKeyAndSecret, validateApiCredentialFields, validateLoginFields, validateMongoObjectId, createStoreUpdatePayload } from "../utils";
 
 export const registerUser = async (req: any, res: any) => {
     const { role } = req.body;
@@ -206,3 +202,43 @@ export const generateStoreToken = async (req: any, res: any) => {
         });
     }
 }
+
+export const updateStore = async (req: any, res: any) => {
+    try {
+        const storeId: string = req.params.id;
+        const inputData: Partial<IStore> = req.body; 
+
+        validateMongoObjectId(storeId);
+
+        const updateData = createStoreUpdatePayload(inputData);
+        delete updateData.storeRegistredId;
+
+        const updatedStore = await Store.findByIdAndUpdate(
+            storeId,
+            { $set: updateData },
+            { new: true, runValidators: true }
+        );
+
+        if (!updatedStore) throw new Error("Store not found");
+
+        return res.status(200).json({
+            message: "Store updated successfully",
+            data: updatedStore,
+        });
+    }
+    catch (error: any) {
+        console.error("Error updating store:", error);
+
+        if (error.message === "Invalid store ID") {
+            return res.status(400).json({ message: "Invalid store ID." });
+        }
+        if (error.message === "Store not found") {
+            return res.status(404).json({ message: "Store not found." });
+        }
+        if (error.message.includes("required")) {
+            return res.status(400).json({ message: error.message });
+        }
+
+        return res.status(500).json({ message: "Unable to update store details.", error: error.message });
+    }
+};
