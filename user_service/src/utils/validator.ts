@@ -1,5 +1,15 @@
 import mongoose from "mongoose";
 
+export const validateMongoObjectId = (id: any): void => {
+    if (!id) {
+        throw new Error("Store ID is required.");
+    }
+
+    if (!mongoose.Types.ObjectId.isValid(id)) {
+        throw new Error("Invalid store ID");
+    }
+}
+
 export const validateUserData = (userData: any): void => {
     const {
         firstName,
@@ -115,7 +125,7 @@ export const validateStoreData = (storeData: any): void => {
 
     // Validate open time and close time
     // const timeRegex = /^([01]\d|2[0-3]):([0-5]\d)$/; // Format: HH:mm (24-hour format)
-    const timeRegex = /^([01]?[0-9]|12):([0-5][0-9]) (AM|PM)$/; 
+    const timeRegex = /^([01]?[0-9]|12):([0-5][0-9]) (AM|PM)$/;
     if (!openTime || !timeRegex.test(openTime)) {
         throw new Error("A valid open time is required (format: HH:mm AM/PM)");
     }
